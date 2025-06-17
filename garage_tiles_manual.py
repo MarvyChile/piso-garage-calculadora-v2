@@ -35,9 +35,9 @@ rows = math.ceil(largo_m / 0.4)
 if "df" not in st.session_state or st.session_state.df.shape != (rows, cols):
     st.session_state.df = pd.DataFrame([[color_base]*cols for _ in range(rows)])
 
-modelo = st.selectbox("Seleccionar modelo de diseño", ["MODELO A", "MODELO B", "MODELO C", "MODELO D", "MODELO E"])
+modelo = st.selectbox("Seleccionar modelo de diseño decorativo", ["MODELO A", "MODELO B", "MODELO C", "MODELO D", "MODELO E"])
 
-def aplicar_modelo():
+def aplicar_modelo_diseno():
     df = pd.DataFrame([[color_base]*cols for _ in range(rows)])
 
     if modelo == "MODELO A":
@@ -50,7 +50,7 @@ def aplicar_modelo():
     elif modelo == "MODELO B":
         for y in range(rows):
             for x in range(cols):
-                if (x in [1, cols-2] or y in [1, rows-2]) or (x in [0, cols-1] or y in [0, rows-1]):
+                if (x in [0, cols-1] or y in [0, rows-1]) or (x in [1, cols-2] or y in [1, rows-2]):
                     df.iat[y, x] = color_secundario
 
     elif modelo == "MODELO C":
@@ -58,7 +58,8 @@ def aplicar_modelo():
         mid_y = rows // 2
         for y in range(mid_y-1, mid_y+2):
             for x in range(mid_x-1, mid_x+2):
-                df.iat[y, x] = color_secundario
+                if 0 <= y < rows and 0 <= x < cols:
+                    df.iat[y, x] = color_secundario
 
     elif modelo == "MODELO D":
         for y in range(rows):
@@ -74,8 +75,8 @@ def aplicar_modelo():
 
     st.session_state.df = df
 
-if st.button("Aplicar diseño"):
-    aplicar_modelo()
+if st.button("Aplicar diseño decorativo"):
+    aplicar_modelo_diseno()
 
 # Cantidades
 df = st.session_state.df
@@ -121,13 +122,12 @@ if incluir_esquineros:
     for (cx, cy) in [(0,0), (0,rows), (cols,0), (cols,rows)]:
         ax.add_patch(plt.Rectangle((cx-s/2, cy-s/2), s, s, facecolor=color_bordillo, edgecolor=borde_general))
 
-# Medidas
+# Medidas reales con línea
 largo_real = rows * 0.4 + 0.06 * (("Arriba" in pos_bord) + ("Abajo" in pos_bord)) if incluir_bordillos else rows * 0.4
 ancho_real = cols * 0.4 + 0.06 * (("Izquierda" in pos_bord) + ("Derecha" in pos_bord)) if incluir_bordillos else cols * 0.4
 
 ax.text(cols/2, rows + 0.6, f"{ancho_real:.2f} m", ha='center', va='bottom', fontsize=10)
 ax.text(cols + 0.6, rows/2, f"{largo_real:.2f} m", ha='left', va='center', rotation=90, fontsize=10)
-
 ax.plot([0, cols], [rows + 0.5, rows + 0.5], color="#666666")
 ax.plot([cols + 0.5, cols + 0.5], [0, rows], color="#666666")
 
