@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,16 +36,16 @@ rows = math.ceil(largo_m / 0.4)
 if "df" not in st.session_state or st.session_state.df.shape != (rows, cols):
     st.session_state.df = pd.DataFrame([[color_base]*cols for _ in range(rows)])
 
-modelo = st.selectbox("Seleccionar modelo de diseño decorativo", ["MODELO A", "MODELO B", "MODELO C", "MODELO D", "MODELO E"])
+modelo = st.selectbox("Seleccionar modelo de diseño decorativo", ["MODELO A", "MODELO B", "MODELO C", "MODELO D", "MODELO E", "MODELO F", "MODELO G"])
 
 def aplicar_modelo_diseno():
     df = pd.DataFrame([[color_base]*cols for _ in range(rows)])
 
     if modelo == "MODELO A":
         margen = max(1, min(rows, cols) // 5)
-        for y in range(margen, rows - margen):
-            for x in range(margen, cols - margen):
-                if x in (margen, cols - margen - 1) or y in (margen, rows - margen - 1):
+        for y in range(rows):
+            for x in range(cols):
+                if (x == margen or x == cols - margen - 1 or y == margen or y == rows - margen - 1):
                     df.iat[y, x] = color_secundario
 
     elif modelo == "MODELO B":
@@ -56,8 +57,8 @@ def aplicar_modelo_diseno():
     elif modelo == "MODELO C":
         mid_x = cols // 2
         mid_y = rows // 2
-        for y in range(mid_y-1, mid_y+2):
-            for x in range(mid_x-1, mid_x+2):
+        for y in range(mid_y - 1, mid_y + 2):
+            for x in range(mid_x - 1, mid_x + 2):
                 if 0 <= y < rows and 0 <= x < cols:
                     df.iat[y, x] = color_secundario
 
@@ -72,6 +73,19 @@ def aplicar_modelo_diseno():
             for x in range(cols):
                 if x == y or x == cols - y - 1:
                     df.iat[y, x] = color_secundario
+
+    elif modelo == "MODELO F":  # Marco superior e inferior
+        for x in range(cols):
+            df.iat[0, x] = color_secundario
+            df.iat[rows-1, x] = color_secundario
+        for y in range(rows):
+            df.iat[y, cols//2] = color_secundario
+
+    elif modelo == "MODELO G":  # Cuadro tipo cruz
+        for y in range(rows):
+            df.iat[y, cols//2] = color_secundario
+        for x in range(cols):
+            df.iat[rows//2, x] = color_secundario
 
     st.session_state.df = df
 
