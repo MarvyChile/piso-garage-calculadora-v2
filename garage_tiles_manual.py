@@ -67,8 +67,10 @@ def aplicar_modelo_diseno():
     elif modelo.startswith("MODELO C"):
         mid_x = cols // 2
         mid_y = rows // 2
-        for y in range(mid_y - 1, mid_y + 1 + (rows % 2)):
-            for x in range(mid_x - 1, mid_x + 1 + (cols % 2)):
+        start_x = mid_x - 1 if cols % 2 == 0 else mid_x
+        start_y = mid_y - 1 if rows % 2 == 0 else mid_y
+        for y in range(start_y, start_y + (2 if rows % 2 == 0 else 1)):
+            for x in range(start_x, start_x + (2 if cols % 2 == 0 else 1)):
                 if 0 <= y < rows and 0 <= x < cols:
                     df.iat[y, x] = color_secundario
 
@@ -82,8 +84,6 @@ def aplicar_modelo_diseno():
         for y in range(rows):
             for x in range(cols):
                 if x == y or x == cols - y - 1:
-                    df.iat[y, x] = color_secundario
-                if rows % 2 == 0 and x == y - 1:
                     df.iat[y, x] = color_secundario
 
     elif modelo.startswith("MODELO F"):
@@ -109,3 +109,62 @@ def aplicar_modelo_diseno():
 
 if st.button("Aplicar diseño decorativo"):
     aplicar_modelo_diseno()
+
+# Cantidades
+df = st.session_state.df
+total_palmetas = rows * cols
+total_bordillos = sum([cols if side in ["Arriba", "Abajo"] else rows for side in pos_bord]) if incluir_bordillos else 0
+total_esquineros = 4 if incluir_esquineros else 0
+
+conteo_colores = df.apply(pd.Series.value_counts).fillna(0).sum(axis=1).astype(int).to_dict()
+
+st.markdown("### Cantidad necesaria:")
+for color, count in conteo_colores.items():
+    st.markdown(f"- **{color}:** {count} palmetas")
+st.markdown(f"- **Bordillos:** {total_bordillos}")
+st.markdown(f"- **Esquineros:** {total_esquineros}")
+
+# Visualización
+borde_general = "#FFFFFF" if color_base == "Negro" else "#000000"
+color_bordillo = "#000000"
+
+fig, ax = plt.subplots(figsize=(cols/2, rows/2))
+for y in range(rows):
+    for x in range(cols):
+        c = colores.get(df.iat[y, x], "#FFFFFF")
+        ax.add_patch(plt.Rectangle((x, rows-1-y), 1, 1, facecolor=c, edgecolor=borde_general, linewidth=0.8))
+
+if incluir_bordillos:
+    for side in pos_bord:
+        if side == "Arriba":
+            for x in range(cols):
+                ax.add_patch(plt.Rectangle((x, rows), 1, 0.15, facecolor=color_bordillo, edgecolor=borde_general))
+        if side == "Abajo":
+            for x in range(cols):
+                ax.add_patch(plt.Rectangle((x, -0.15), 1, 0.15, facecolor=color_bordillo, edgecolor=borde_general))
+        if side == "Izquierda":
+            for y in range(rows):
+                ax.add_patch(plt.Rectangle((-0.15, y), 0.15, 1, facecolor=color_bordillo, edgecolor=borde_general))
+        if side == "Derecha":
+            for y in range(rows):
+                ax.add_patch(plt.Rectangle((cols, y), 0.15, 1, facecolor=color_bordillo, edgecolor=borde_general))
+
+if incluir_esquineros:
+    s = 0.15
+    for (cx, cy) in [(0,0), (0,rows), (cols,0), (cols,rows)]:
+        ax.add_patch(plt.Rectangle((cx-s/2, cy-s/2), s, s, facecolor=color_bordillo, edgecolor=borde_general))
+
+# Medidas reales con línea
+largo_real = rows * 0.4 + 0.06 * (("Arriba" in pos_bord) + ("Abajo" in pos_bord)) if incluir_bordillos else rows * 0.4
+ancho_real = cols * 0.4 + 0.06 * (("Izquierda" in pos_bord) + ("Derecha" in pos_bord)) if incluir_bordillos else cols * 0.4
+
+ax.text(cols/2, rows + 0.6, f"{ancho_real:.2f} m", ha='center', va='bottom', fontsize=10)
+ax.text(cols + 0.6, rows/2, f"{largo_real:.2f} m", ha='left', va='center', rotation=90, fontsize=10)
+ax.plot([0, cols], [rows + 0.5, rows + 0.5], color="#666666")
+ax.plot([cols + 0.5, cols + 0.5], [0, rows], color="#666666")
+
+ax.set_xlim(-0.5, cols + 1.5)
+ax.set_ylim(-0.5, rows + 1.5)
+ax.set_aspect('equal')
+ax.axis('off')
+st.pyplot(fig)
