@@ -3,33 +3,32 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math
 from streamlit_drawable_canvas import st_canvas
-from PIL import Image, ImageDraw
 
-# ───────────── Config  ───────────────────────────────────────────────
+# ───────── Config ──────────────────────────────────────────────
 st.set_page_config(layout="centered")
-st.title("Piso Garage – Calculadora V2  +  Diseño manual 2.0")
+st.title("Piso Garage – Calculadora V2  •  Diseño manual 2.0")
 
-# ───────────── Entradas de medida ────────────────────────────────────
+# ───────── Entradas de medida ──────────────────────────────────
 unidad  = st.selectbox("Unidad", ["metros", "centímetros"])
 factor  = 1 if unidad == "metros" else 0.01
 min_val = 1.0 if unidad == "metros" else 10.0
 
-ancho_in = st.number_input("Ancho", min_value=min_val,
+ancho_in = st.number_input("Ancho",  min_value=min_val,
                            value=4.0 if unidad=="metros" else 400.0, step=1.0)
-largo_in = st.number_input("Largo", min_value=min_val,
+largo_in = st.number_input("Largo",  min_value=min_val,
                            value=6.0 if unidad=="metros" else 600.0, step=1.0)
 
 ancho_m, largo_m = ancho_in*factor, largo_in*factor
 st.markdown(f"**Área:** {round(ancho_m*largo_m,2)} m²")
 
-# ───────────── Bordillos / esquineros ────────────────────────────────
+# ───────── Bordillos / esquineros ──────────────────────────────
 incluir_bordillos  = st.checkbox("Bordillos",  value=True)
 incluir_esquineros = st.checkbox("Esquineros", value=True)
 pos_bord = st.multiselect("Lados con bordillo",
                           ["Arriba","Abajo","Izquierda","Derecha"],
                           default=["Arriba","Abajo","Izquierda","Derecha"])
 
-# ───────────── Colores disponibles ───────────────────────────────────
+# ───────── Colores ─────────────────────────────────────────────
 colores = {
     "Blanco":"#FFFFFF","Negro":"#000000","Gris":"#B0B0B0","Gris Oscuro":"#4F4F4F",
     "Azul":"#0070C0","Celeste":"#00B0F0","Amarillo":"#FFFF00","Verde":"#00B050","Rojo":"#FF0000"
@@ -38,7 +37,7 @@ lista = list(colores)
 color_base = st.selectbox("Color base", lista, index=lista.index("Gris"))
 color_sec  = st.selectbox("Color secundario", lista, index=lista.index("Rojo"))
 
-# ───────────── Dimensiones de la grilla ──────────────────────────────
+# ───────── Dimensiones de la grilla ────────────────────────────
 cols = math.ceil(ancho_m/0.4)
 rows = math.ceil(largo_m/0.4)
 
@@ -47,7 +46,7 @@ if "df" not in st.session_state or st.session_state.df.shape!=(rows,cols):
 
 def centrales(n): return [n//2] if n%2 else [n//2-1, n//2]
 
-# ───────────── Modelos automáticos A-G ───────────────────────────────
+# ───────── Modelos automáticos A–G ─────────────────────────────
 modelo = st.selectbox(
     "Modelo automático (opcional)",
     ["A – Marco","B – Doble marco","C – Cuadro central",
@@ -62,7 +61,8 @@ def aplicar_modelo():
         m=max(1,min(rows,cols)//5)
         for y in range(rows):
             for x in range(cols):
-                if x in (m,cols-m-1) or y in (m,rows-m-1): df.iat[y,x]=color_sec
+                if x in (m,cols-m-1) or y in (m,rows-m-1):
+                    df.iat[y,x]=color_sec
     elif modelo.startswith("B"):
         for y in range(rows):
             for x in range(cols):
@@ -94,60 +94,54 @@ def aplicar_modelo():
 if st.button("Aplicar modelo automático"):
     aplicar_modelo()
 
-# ───────────── Diseño manual 2.0 (canvas) ────────────────────────────
+# ───────── Diseño manual 2.0 (canvas) ─────────────────────────
 st.markdown("### Diseño manual (clic en celdas)")
 activar = st.checkbox("Activar diseño manual avanzado")
 
 if activar:
-    # Paleta de colores
-    color_seleccion = st.radio("Elegir color", lista, horizontal=True, key="paleta")
-
-    # Generar imagen-grid como fondo del canvas
+    color_sel = st.radio("Elegir color", lista, horizontal=True, key="paleta")
     cell_px = 40
-    img = Image.new("RGB", (cols*cell_px, rows*cell_px), "white")
-    draw = ImageDraw.Draw(img)
-    for x in range(cols+1):
-        draw.line([(x*cell_px,0),(x*cell_px,rows*cell_px)], fill="lightgrey")
-    for y in range(rows+1):
-        draw.line([(0,y*cell_px),(cols*cell_px,y*cell_px)], fill="lightgrey")
-
     canvas = st_canvas(
-        fill_color=color_seleccion, stroke_width=0,
-        background_image=img, update_streamlit=True,
-        height=rows*cell_px, width=cols*cell_px,
-        drawing_mode="point"
+        fill_color=colores[color_sel],
+        stroke_width=0,
+        background_color="#FFFFFF",
+        height=rows*cell_px,
+        width=cols*cell_px,
+        drawing_mode="point",
+        update_streamlit=True,
+        grid_mode=True      # rejilla automática
     )
 
     if st.button("Guardar diseño manual"):
-        # Cada clic queda en canvas.json["objects"]
-        for obj in canvas.json_data["objects"]:
-            cx, cy = obj["left"], obj["top"]
-            x = int(cx // cell_px)
-            y = int(cy // cell_px)
-            if 0 <= x < cols and 0 <= y < rows:
-                st.session_state.df.iat[rows-1-y, x] = color_seleccion
+        if canvas.json_data and "objects" in canvas.json_data:
+            for obj in canvas.json_data["objects"]:
+                cx, cy = obj["left"], obj["top"]
+                x = int(cx // cell_px)
+                y = int(cy // cell_px)
+                if 0<=x<cols and 0<=y<rows:
+                    st.session_state.df.iat[rows-1-y, x] = color_sel
 
 df = st.session_state.df
 
-# ───────────── Conteo ────────────────────────────────────────────────
+# ───────── Conteo de piezas ─────────────────────────────────
 palmetas = df.apply(pd.Series.value_counts).fillna(0).sum(axis=1).astype(int).to_dict()
 bordillos = sum(cols if s in ("Arriba","Abajo") else rows for s in pos_bord) if incluir_bordillos else 0
 esquineros = 4 if incluir_esquineros else 0
 
 st.markdown("### Cantidad necesaria:")
-for col, n in palmetas.items():
-    st.markdown(f"- **{col}:** {n}")
+for c,n in palmetas.items():
+    st.markdown(f"- **{c}:** {n}")
 st.markdown(f"- **Bordillos:** {bordillos}")
 st.markdown(f"- **Esquineros:** {esquineros}")
 
-# ───────────── Dibujo final ──────────────────────────────────────────
+# ───────── Dibujo final ─────────────────────────────────────
 bordec = "#FFFFFF" if color_base=="Negro" else "#000000"
 fig, ax = plt.subplots(figsize=(cols/2, rows/2))
 for y in range(rows):
     for x in range(cols):
         ax.add_patch(plt.Rectangle((x,rows-1-y),1,1,
                                    facecolor=colores[df.iat[y,x]],
-                                   edgecolor=bordec, lw=0.8))
+                                   edgecolor=bordec,lw=0.8))
 
 bord_col="#000000"
 if incluir_bordillos:
