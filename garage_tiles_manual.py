@@ -2,13 +2,10 @@
 #   • Modelos automáticos A–G
 #   • Canvas de diseño manual con cuadrícula visible
 #   • Parche image_to_url para funcionar con Streamlit < 1.26
-# Requisitos (requirements.txt):
+# Requisitos:
 #   streamlit>=1.18
 #   streamlit-drawable-canvas
-#   pandas
-#   numpy
-#   matplotlib
-#   Pillow
+#   pandas, numpy, matplotlib, Pillow
 # ─────────────────────────────────────────────────────────────────────────────────────
 
 import streamlit as st
@@ -18,11 +15,11 @@ import math, io, base64
 from PIL import Image, ImageDraw
 from streamlit_drawable_canvas import st_canvas
 
-# ╭─ Parche image_to_url ────────────────────────────────────────────────╮
+# ╭─ Parche image_to_url ───────────────────────────────────────────────╮
 import streamlit.elements.image as _st_img
 def _safe_image_to_url(img, width=None, clamp=False,
                        channels="RGB", output_format="PNG", filename="img"):
-    """Versión compatible con streamlit-drawable-canvas en Streamlit < 1.26"""
+    """Convierte PIL.Image a data-URL. Firma compatible con Streamlit ≥1.26"""
     buf = io.BytesIO()
     img.save(buf, format=output_format)
     b64 = base64.b64encode(buf.getvalue()).decode()
@@ -31,6 +28,7 @@ if not hasattr(_st_img, "image_to_url") or "streamlit.elements" in str(_st_img.i
     _st_img.image_to_url = _safe_image_to_url
 # ╰──────────────────────────────────────────────────────────────────────╯
 
+# ───────── Config ─────────────────────────────────────────────────────
 st.set_page_config(layout="centered")
 st.title("Piso Garage – Calculadora V2  •  Diseño manual 2.0")
 
@@ -124,7 +122,7 @@ st.markdown("### Diseño manual (clic en celdas)")
 if st.checkbox("Activar diseño manual"):
     color_sel = st.radio("Color", lista, horizontal=True, key="paleta")
     cell = 40
-    # Crear fondo con grid
+    # fondo con cuadrícula
     img = Image.new("RGB", (cols*cell, rows*cell), "white")
     draw = ImageDraw.Draw(img)
     for x in range(cols+1): draw.line([(x*cell,0),(x*cell,rows*cell)], fill="#CCCCCC")
@@ -176,19 +174,4 @@ if incluir_bordillos:
         if "Arriba" in pos_bord: ax.add_patch(plt.Rectangle((x,rows),1,.15,facecolor=bord_col,edgecolor=bordec))
         if "Abajo"  in pos_bord: ax.add_patch(plt.Rectangle((x,-.15),1,.15,facecolor=bord_col,edgecolor=bordec))
     for y in range(rows):
-        if "Izquierda" in pos_bord: ax.add_patch(plt.Rectangle((-.15,y),.15,1,facecolor=bord_col,edgecolor=bordec))
-        if "Derecha"   in pos_bord: ax.add_patch(plt.Rectangle((cols,y),.15,1,facecolor=bord_col,edgecolor=bordec))
-
-# Esquineros
-if incluir_esquineros:
-    s = .15
-    for cx,cy in [(0,0),(0,rows),(cols,0),(cols,rows)]:
-        ax.add_patch(plt.Rectangle((cx-s/2,cy-s/2),s,s,facecolor=bord_col,edgecolor=bordec))
-
-# Medidas y ejes
-l_real = rows*0.4 + 0.06*((("Arriba" in pos_bord)+("Abajo" in pos_bord)) if incluir_bordillos else 0)
-a_real = cols*0.4 + 0.06*((("Izquierda" in pos_bord)+("Derecha" in pos_bord)) if incluir_bordillos else 0)
-
-# Texto de medidas
-ax.text(cols/2, rows + 0.6,
-        f"{a
+        if "Izquierda" in pos_bord: ax.add_patch(plt.Rectangle((-.
