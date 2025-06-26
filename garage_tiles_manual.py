@@ -1,13 +1,3 @@
-# ──────────────────────────  Piso Garage – Calculadora V2  ──────────────────────────
-# Esta versión incluye:
-#   • Modelos automáticos A–G
-#   • Canvas de diseño manual con cuadrícula
-#   • Parche image_to_url → funciona incluso con Streamlit < 1.26
-# Requisitos:
-#   streamlit>=1.18
-#   streamlit-drawable-canvas
-#   pandas, numpy, matplotlib, Pillow
-# ─────────────────────────────────────────────────────────────────────────────────────
 
 import streamlit as st
 import pandas as pd
