@@ -108,8 +108,7 @@ if activar:
         height=rows*cell_px,
         width=cols*cell_px,
         drawing_mode="point",
-        update_streamlit=True,
-        grid_mode=True      # rejilla automática
+        update_streamlit=True
     )
 
     if st.button("Guardar diseño manual"):
