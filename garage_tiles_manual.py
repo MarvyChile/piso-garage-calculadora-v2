@@ -1,3 +1,14 @@
+# ──────────────────────────  Piso Garage – Calculadora V2  ──────────────────────────
+# Esta versión incluye:
+#   • Modelos automáticos A–G
+#   • Canvas de diseño manual con cuadrícula
+#   • Parche image_to_url → funciona incluso con Streamlit < 1.26
+# Requisitos:
+#   streamlit>=1.18
+#   streamlit-drawable-canvas
+#   pandas, numpy, matplotlib, Pillow
+# ─────────────────────────────────────────────────────────────────────────────────────
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -5,36 +16,42 @@ import math, io, base64
 from PIL import Image, ImageDraw
 from streamlit_drawable_canvas import st_canvas
 
-# ──────── parche para image_to_url (funciona con Streamlit <1.26) ────────
-import streamlit.elements.image as st_image
-def _img_to_url(img, _max_w=None, _max_h=None, kind="png"):
+# ─── Parche image_to_url para versiones antiguas de Streamlit ──────────
+import streamlit.elements.image as _st_img
+def _safe_image_to_url(img, width=None, clamp=False,
+                       channels="RGB", output_format="PNG", filename="img"):
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, format=output_format)
     data = base64.b64encode(buf.getvalue()).decode()
-    return f"data:image/png;base64,{data}"
-st_image.image_to_url = _img_to_url
-# ─────────────────────────────────────────────────────────────────────────
+    return f"data:image/{output_format.lower()};base64,{data}"
+if not hasattr(_st_img, "image_to_url") or "streamlit.elements" in str(_st_img.image_to_url):
+    _st_img.image_to_url = _safe_image_to_url
+# ────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(layout="centered")
-st.title("Piso Garage – Calculadora V2 • Diseño manual 2.0")
+st.title("Piso Garage – Calculadora V2  •  Diseño manual 2.0")
 
-# ───── Entradas básicas ────────────────────────────────────────────────
-unidad  = st.selectbox("Unidad",["metros","centímetros"])
-factor  = 1 if unidad=="metros" else 0.01
-min_val = 1.0 if unidad=="metros" else 10.0
-ancho_in = st.number_input("Ancho",  min_value=min_val, value=4.0 if unidad=="metros" else 400.0)
-largo_in = st.number_input("Largo",  min_value=min_val, value=6.0 if unidad=="metros" else 600.0)
+# ───────── Entradas de medida ───────────────────────────────────────────
+unidad  = st.selectbox("Unidad", ["metros", "centímetros"])
+factor  = 1 if unidad == "metros" else 0.01
+min_val = 1.0 if unidad == "metros" else 10.0
+
+ancho_in = st.number_input("Ancho",  min_value=min_val,
+                           value=4.0 if unidad=="metros" else 400.0, step=1.0)
+largo_in = st.number_input("Largo",  min_value=min_val,
+                           value=6.0 if unidad=="metros" else 600.0, step=1.0)
+
 ancho_m, largo_m = ancho_in*factor, largo_in*factor
 st.markdown(f"**Área:** {round(ancho_m*largo_m,2)} m²")
 
-# ───── Bordillos/esquineros ────────────────────────────────────────────
+# ───────── Bordillos / esquineros ───────────────────────────────────────
 incluir_bordillos  = st.checkbox("Bordillos",  value=True)
 incluir_esquineros = st.checkbox("Esquineros", value=True)
 pos_bord = st.multiselect("Lados con bordillo",
                           ["Arriba","Abajo","Izquierda","Derecha"],
                           default=["Arriba","Abajo","Izquierda","Derecha"])
 
-# ───── Colores ─────────────────────────────────────────────────────────
+# ───────── Colores ──────────────────────────────────────────────────────
 colores = {
     "Blanco":"#FFFFFF","Negro":"#000000","Gris":"#B0B0B0","Gris Oscuro":"#4F4F4F",
     "Azul":"#0070C0","Celeste":"#00B0F0","Amarillo":"#FFFF00","Verde":"#00B050","Rojo":"#FF0000"
@@ -43,17 +60,19 @@ lista = list(colores)
 c_base = st.selectbox("Color base", lista, index=lista.index("Gris"))
 c_sec  = st.selectbox("Color secundario", lista, index=lista.index("Rojo"))
 
-# ───── Calculamos grilla ───────────────────────────────────────────────
+# ───────── Dimensiones de la grilla ─────────────────────────────────────
 cols = math.ceil(ancho_m/0.4)
 rows = math.ceil(largo_m/0.4)
+
 if "df" not in st.session_state or st.session_state.df.shape!=(rows,cols):
     st.session_state.df = pd.DataFrame([[c_base]*cols for _ in range(rows)])
 
 def centrales(n): return [n//2] if n%2 else [n//2-1, n//2]
 
-# ───── Modelos automáticos (opcional) ──────────────────────────────────
+# ───────── Modelos automáticos A–G ─────────────────────────────────────
 modelo = st.selectbox("Modelo automático",
-    ["A – Marco","B – Doble marco","C – Cuadro","D – Ajedrez","E – Diagonales","F – Banda+bordes","G – Cruz"])
+    ["A – Marco","B – Doble marco","C – Cuadro",
+     "D – Ajedrez","E – Diagonales","F – Banda+bordes","G – Cruz"])
 
 def aplicar_modelo():
     df = pd.DataFrame([[c_base]*cols for _ in range(rows)])
@@ -93,18 +112,15 @@ def aplicar_modelo():
 if st.button("Aplicar modelo automático"):
     aplicar_modelo()
 
-# ───── Diseño manual con cuadrícula visible ───────────────────────────
+# ───────── Diseño manual con cuadrícula visible ───────────────────────
 st.markdown("### Diseño manual (clic en celdas)")
 if st.checkbox("Activar diseño manual"):
     color_sel = st.radio("Color", lista, horizontal=True, key="paleta")
     cell = 40
-    # Crear fondo con grid
     img = Image.new("RGB", (cols*cell, rows*cell), "white")
     draw = ImageDraw.Draw(img)
-    for x in range(cols+1):
-        draw.line([(x*cell,0),(x*cell, rows*cell)], fill="#CCCCCC")
-    for y in range(rows+1):
-        draw.line([(0,y*cell),(cols*cell,y*cell)], fill="#CCCCCC")
+    for x in range(cols+1): draw.line([(x*cell,0),(x*cell, rows*cell)], fill="#CCCCCC")
+    for y in range(rows+1): draw.line([(0,y*cell),(cols*cell,y*cell)], fill="#CCCCCC")
 
     canvas = st_canvas(
         fill_color=colores[color_sel],
@@ -125,7 +141,7 @@ if st.checkbox("Activar diseño manual"):
 
 df = st.session_state.df
 
-# ───── Conteo de piezas ───────────────────────────────────────────────
+# ───────── Conteo de piezas ────────────────────────────────────────────
 palmetas = df.apply(pd.Series.value_counts).fillna(0).sum(axis=1).astype(int).to_dict()
 bordillos = sum(cols if s in ("Arriba","Abajo") else rows for s in pos_bord) if incluir_bordillos else 0
 esquineros = 4 if incluir_esquineros else 0
@@ -136,7 +152,7 @@ for col,n in palmetas.items():
 st.markdown(f"- **Bordillos:** {bordillos}")
 st.markdown(f"- **Esquineros:** {esquineros}")
 
-# ───── Dibujo final ──────────────────────────────────────────────────
+# ───────── Dibujo final ───────────────────────────────────────────────
 bordec = "#FFFFFF" if c_base=="Negro" else "#000000"
 fig, ax = plt.subplots(figsize=(cols/2, rows/2))
 for y in range(rows):
@@ -145,9 +161,21 @@ for y in range(rows):
                                    facecolor=colores[df.iat[y,x]],
                                    edgecolor=bordec,lw=0.8))
 
-# Bordillos y esquineros (idénticos a versiones previas) …
-# [Código sin cambios para no alargar]
+bord_col="#000000"
+if incluir_bordillos:
+    for x in range(cols):
+        if "Arriba" in pos_bord: ax.add_patch(plt.Rectangle((x,rows),1,.15,facecolor=bord_col,edgecolor=bordec))
+        if "Abajo"  in pos_bord: ax.add_patch(plt.Rectangle((x,-.15),1,.15,facecolor=bord_col,edgecolor=bordec))
+    for y in range(rows):
+        if "Izquierda" in pos_bord: ax.add_patch(plt.Rectangle((-.15,y),.15,1,facecolor=bord_col,edgecolor=bordec))
+        if "Derecha"   in pos_bord: ax.add_patch(plt.Rectangle((cols,y),.15,1,facecolor=bord_col,edgecolor=bordec))
 
-ax.set_xlim(-.5, cols+1.5); ax.set_ylim(-.5, rows+1.5)
-ax.set_aspect("equal"); ax.axis("off")
-st.pyplot(fig)
+if incluir_esquineros:
+    s=.15
+    for cx,cy in [(0,0),(0,rows),(cols,0),(cols,rows)]:
+        ax.add_patch(plt.Rectangle((cx-s/2,cy-s/2),s,s,facecolor=bord_col,edgecolor=bordec))
+
+l_real = rows*0.4 + 0.06*((("Arriba" in pos_bord)+("Abajo" in pos_bord)) if incluir_bordillos else 0)
+a_real = cols*0.4 + 0.06*((("Izquierda" in pos_bord)+("Derecha" in pos_bord)) if incluir_bordillos else 0)
+ax.text(cols/2, rows+.6, f"{a_real:.2f} m", ha="center", va="bottom")
+ax.text(cols+.6, rows/2
