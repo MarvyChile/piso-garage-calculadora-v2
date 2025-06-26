@@ -1,5 +1,6 @@
 streamlit>=1.18
 streamlit-drawable-canvas
+streamlit-aggrid
 pandas
 numpy
 matplotlib
